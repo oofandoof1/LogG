@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Data Viewer - Game 126884695634066</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background-color: #f0f0f0; }
+    .container { margin-bottom: 20px; }
+    .input-group { margin-bottom: 10px; }
+    .input-group input, .input-group button { padding: 8px; margin-right: 5px; }
+    .checkbox-group { margin-bottom: 10px; }
+    .checkbox-group label { margin-right: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { padding: 10px; border: 1px solid #ccc; text-align: left; cursor: pointer; }
+    th { background-color: #333; color: #fff; }
+    .delete-btn { background-color: #dc3545; color: #fff; padding: 8px 16px; border: none; cursor: pointer; }
+    .delete-btn:hover { background-color: #c82333; }
+  </style>
+</head>
+<body>
+
+<h1>Roblox Data Viewer - Game 126884695634066</h1>
+
+<div class="input-group">
+  <button onclick="toggleSelectAll()">Select All</button>
+  <button onclick="fetchData()">Load Data</button>
+  <button onclick="deleteAllData()" class="delete-btn">Delete All Data</button>
+  <input type="text" id="searchInput" placeholder="Search Backpack Items...">
+</div>
+
+<div class="checkbox-group" id="pcCheckboxGroup"></div>
+
+<div class="container">
+  <h2>Summary by PC</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>PC</th>
+        <th>Total Players</th>
+        <th>Total Sheckles</th>
+      </tr>
+    </thead>
+    <tbody id="summary-table">
+      <tr><td colspan="3">Loading summary...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="container">
+  <h2>Player Data</h2>
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortData('pc')">PC</th>
+        <th onclick="sortData('playerName')">Player</th>
+        <th onclick="sortData('sheckles')">Sheckles</th>
+        <th onclick="sortData('backpackItems')">Backpack Items</th>
+        <th onclick="sortData('timestamp')">Timestamp</th>
+      </tr>
+    </thead>
+    <tbody id="data-table">
+      <tr>
+        <td colspan="5">Loading data...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const apiUrl = "https://deadrails-e2d45-default-rtdb.firebaseio.com/game126884695634066.json";
+  let dataArray = [];
+  let sortDirection = 1;
+  let currentSortKey = "pc";
+
+  async function fetchData() {
+    const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+    const selectedPCs = getSelectedPCs();
+
+    try {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      const pcCheckboxGroup = document.getElementById('pcCheckboxGroup');
+      const dataTable = document.getElementById('data-table');
+      const summaryTable = document.getElementById('summary-table');
+
+      if (!data) {
+        dataTable.innerHTML = "<tr><td colspan='5'>No data available.</td></tr>";
+        summaryTable.innerHTML = "<tr><td colspan='3'>No data available.</td></tr>";
+        pcCheckboxGroup.innerHTML = "";
+        return;
+      }
+
+      dataArray = Object.keys(data).map(key => {
+        const entry = data[key];
+        return {
+          playerName: key,
+          pc: entry.pc || "Unknown",
+          sheckles: entry.sheckles !== undefined ? entry.sheckles : 0,
+          backpackItems: entry.backpackItems || [],
+          timestamp: entry.timestamp || "N/A"
+        };
+      });
+
+      // สร้าง Checkbox จากข้อมูล PC จริง
+      const uniquePCs = [...new Set(dataArray.map(entry => entry.pc))]
+        .sort((a, b) => parseInt(a.replace("PC_", "")) - parseInt(b.replace("PC_", "")));
+
+      pcCheckboxGroup.innerHTML = uniquePCs.map(pc => `
+        <label>
+          <input type="checkbox" value="${pc}" checked> ${pc}
+        </label>
+      `).join('');
+
+      // กรองตาม PC
+      if (selectedPCs.length > 0) {
+        dataArray = dataArray.filter(entry => selectedPCs.includes(entry.pc));
+      }
+
+      // กรอง Backpack Items
+      if (searchQuery) {
+        dataArray = dataArray.filter(entry =>
+          entry.backpackItems.some(item => item.toLowerCase().includes(searchQuery))
+        );
+      }
+
+      renderTable();
+      renderSummary();
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  }
+
+  function renderSummary() {
+    const summaryTable = document.getElementById('summary-table');
+    const pcSummary = {};
+
+    dataArray.forEach(entry => {
+      if (!pcSummary[entry.pc]) {
+        pcSummary[entry.pc] = { totalPlayers: 0, totalSheckles: 0 };
+      }
+      pcSummary[entry.pc].totalPlayers += 1;
+      pcSummary[entry.pc].totalSheckles += entry.sheckles;
+    });
+
+    summaryTable.innerHTML = Object.keys(pcSummary).length > 0
+      ? Object.keys(pcSummary).map(pc => `
+          <tr>
+            <td>${pc}</td>
+            <td>${pcSummary[pc].totalPlayers}</td>
+            <td>${pcSummary[pc].totalSheckles.toLocaleString()}</td>
+          </tr>
+        `).join('')
+      : "<tr><td colspan='3'>No data available.</td></tr>";
+  }
+
+  function getSelectedPCs() {
+    const checkboxes = document.querySelectorAll('#pcCheckboxGroup input[type="checkbox"]');
+    return Array.from(checkboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+  }
+
+  function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('#pcCheckboxGroup input[type="checkbox"]');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    checkboxes.forEach(cb => cb.checked = !allChecked);
+  }
+
+  function sortData(key) {
+    if (currentSortKey === key) sortDirection *= -1;
+    else sortDirection = 1;
+    currentSortKey = key;
+
+    dataArray.sort((a, b) => {
+      let valueA = a[key];
+      let valueB = b[key];
+
+      if (key === "pc") {
+        valueA = parseInt(valueA.replace("PC_", ""));
+        valueB = parseInt(valueB.replace("PC_", ""));
+      }
+
+      return (valueA < valueB ? -1 : 1) * sortDirection;
+    });
+
+    renderTable();
+  }
+
+  function renderTable() {
+    const dataTable = document.getElementById('data-table');
+
+    dataTable.innerHTML = dataArray.length > 0
+      ? dataArray.map(entry => `
+          <tr>
+            <td>${entry.pc}</td>
+            <td>${entry.playerName}</td>
+            <td>${entry.sheckles.toLocaleString()}</td>
+            <td>${entry.backpackItems.join(", ")}</td>
+            <td>${entry.timestamp}</td>
+          </tr>
+        `).join('')
+      : "<tr><td colspan='5'>No data available.</td></tr>";
+  }
+
+  fetchData();
+</script>
+
+</body>
+</html>
