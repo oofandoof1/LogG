@@ -27,6 +27,7 @@
   <button onclick="fetchData()">Load Data</button>
   <button onclick="deleteAllData()" class="delete-btn">Delete All Data</button>
   <input type="text" id="searchInput" placeholder="Search Backpack Items...">
+  <button onclick="copyVisibleData()">📋 Copy Filtered Data</button>
 </div>
 
 <div class="checkbox-group" id="pcCheckboxGroup"></div>
@@ -135,28 +136,41 @@
     }
   }
 
-  function renderSummary() {
-    const summaryTable = document.getElementById('summary-table');
-    const pcSummary = {};
+	function renderSummary() {
+	  const summaryTable = document.getElementById('summary-table');
+	  const pcSummary = {};
+	  let totalPlayers = 0;
+	  let totalSheckles = 0;
 
-    dataArray.forEach(entry => {
-      if (!pcSummary[entry.pc]) {
-        pcSummary[entry.pc] = { totalPlayers: 0, totalSheckles: 0 };
-      }
-      pcSummary[entry.pc].totalPlayers += 1;
-      pcSummary[entry.pc].totalSheckles += entry.sheckles;
-    });
+	  dataArray.forEach(entry => {
+		if (!pcSummary[entry.pc]) {
+		  pcSummary[entry.pc] = { totalPlayers: 0, totalSheckles: 0 };
+		}
+		pcSummary[entry.pc].totalPlayers += 1;
+		pcSummary[entry.pc].totalSheckles += entry.sheckles;
 
-    summaryTable.innerHTML = Object.keys(pcSummary).length > 0
-      ? Object.keys(pcSummary).map(pc => `
-          <tr>
-            <td>${pc}</td>
-            <td>${pcSummary[pc].totalPlayers}</td>
-            <td>${pcSummary[pc].totalSheckles.toLocaleString()}</td>
-          </tr>
-        `).join('')
-      : "<tr><td colspan='3'>No data available.</td></tr>";
-  }
+		// สะสมรวมทั้งหมด
+		totalPlayers += 1;
+		totalSheckles += entry.sheckles;
+	  });
+
+	  summaryTable.innerHTML =
+		Object.keys(pcSummary).map(pc => `
+		  <tr>
+			<td>${pc}</td>
+			<td>${pcSummary[pc].totalPlayers}</td>
+			<td>${pcSummary[pc].totalSheckles.toLocaleString()}</td>
+		  </tr>
+		`).join('') +
+
+		// ✅ เพิ่มแถวรวมท้ายสุด
+		`<tr style="font-weight: bold; background-color: #eaeaea;">
+		  <td>Total</td>
+		  <td>${totalPlayers}</td>
+		  <td>${totalSheckles.toLocaleString()}</td>
+		</tr>`;
+	}
+
 
   function getSelectedPCs() {
     const checkboxes = document.querySelectorAll('#pcCheckboxGroup input[type="checkbox"]');
@@ -238,6 +252,33 @@
 		console.error("Error deleting data:", error);
 	  }
 	}
+	function copyVisibleData() {
+	  if (dataArray.length === 0) {
+		alert("No data to copy.");
+		return;
+	  }
+
+	  const allowedItems = [
+		"dragonfly", "raccoon", "bug egg", "night egg", "candy blossom seed"
+	  ];
+
+	  const rows = dataArray.map(entry => {
+		const shownItems = entry.backpackItems.filter(item =>
+		  allowedItems.some(allowed => item.toLowerCase().includes(allowed.toLowerCase()))
+		);
+		return `${entry.pc}\t${entry.playerName}\t${entry.sheckles}\t${shownItems.join(", ")}`;
+	  });
+
+	  const clipboardData = rows.join("\n");
+
+	  // คัดลอกลง Clipboard
+	  navigator.clipboard.writeText(clipboardData).then(() => {
+		alert("Copied filtered player data to clipboard!");
+	  }).catch(err => {
+		console.error("Failed to copy: ", err);
+		alert("Failed to copy data.");
+	  });
+	}
 
 
   fetchData();
@@ -245,4 +286,3 @@
 
 </body>
 </html>
-
