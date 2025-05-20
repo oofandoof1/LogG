@@ -50,15 +50,17 @@
 <div class="container">
   <h2>Player Data</h2>
   <table>
-    <thead>
-      <tr>
-        <th onclick="sortData('pc')">PC</th>
-        <th onclick="sortData('playerName')">Player</th>
-        <th onclick="sortData('sheckles')">Sheckles</th>
-        <th onclick="sortData('backpackItems')">Backpack Items</th>
-        <th onclick="sortData('timestamp')">Timestamp</th>
-      </tr>
-    </thead>
+	<thead>
+	  <tr>
+		<th>#</th>
+		<th onclick="sortData('pc')">PC</th>
+		<th onclick="sortData('playerName')">Player</th>
+		<th onclick="sortData('sheckles')">Sheckles</th>
+		<th onclick="sortData('backpackItems')">Backpack Items</th>
+		<th onclick="sortData('timestamp')">Timestamp</th>
+		<th onclick="sortData('placeVersion')">Place Version</th>
+	  </tr>
+	</thead>
     <tbody id="data-table">
       <tr>
         <td colspan="5">Loading data...</td>
@@ -91,16 +93,18 @@
         return;
       }
 
-      dataArray = Object.keys(data).map(key => {
-        const entry = data[key];
-        return {
-          playerName: key,
-          pc: entry.pc || "Unknown",
-          sheckles: entry.sheckles !== undefined ? entry.sheckles : 0,
-          backpackItems: entry.backpackItems || [],
-          timestamp: entry.timestamp || "N/A"
-        };
-      });
+		dataArray = Object.keys(data).map(key => {
+		  const entry = data[key];
+		  return {
+			playerName: key,
+			pc: entry.pc || "Unknown",
+			sheckles: entry.sheckles !== undefined ? entry.sheckles : 0,
+			backpackItems: entry.backpackItems || [],
+			timestamp: entry.timestamp || "N/A",
+			placeVersion: entry.placeVersion || "-"
+		  };
+		});
+
 
       // สร้าง Checkbox จากข้อมูล PC จริง
       const uniquePCs = [...new Set(dataArray.map(entry => entry.pc))]
@@ -191,31 +195,30 @@
 	  const dataTable = document.getElementById('data-table');
 
 	  const allowedItems = [
-		"dragonfly",
-		"raccoon",
-		"bug egg",
-		"night egg",
-		"candy blossom seed"
+		"dragonfly", "raccoon", "bug egg", "night egg", "candy blossom seed"
 	  ];
 
 	  dataTable.innerHTML = dataArray.length > 0
-		? dataArray.map(entry => {
+		? dataArray.map((entry, index) => {
 			const shownItems = entry.backpackItems.filter(item =>
 			  allowedItems.some(allowed => item.toLowerCase().includes(allowed.toLowerCase()))
 			);
 
 			return `
 			  <tr>
+				<td>${index + 1}</td>
 				<td>${entry.pc}</td>
 				<td>${entry.playerName}</td>
 				<td>${entry.sheckles.toLocaleString()}</td>
 				<td>${shownItems.join(", ")}</td>
 				<td>${entry.timestamp}</td>
+				<td>${entry.placeVersion}</td>
 			  </tr>
 			`;
 		  }).join('')
-		: "<tr><td colspan='5'>No data available.</td></tr>";
+		: "<tr><td colspan='7'>No data available.</td></tr>";
 	}
+
 
 	async function deleteAllData() {
 	  if (!confirm("Are you sure you want to delete ALL data?")) return;
@@ -242,3 +245,4 @@
 
 </body>
 </html>
+
