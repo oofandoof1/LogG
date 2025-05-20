@@ -187,21 +187,37 @@
     renderTable();
   }
 
-  function renderTable() {
-    const dataTable = document.getElementById('data-table');
+	function renderTable() {
+	  const dataTable = document.getElementById('data-table');
 
-    dataTable.innerHTML = dataArray.length > 0
-      ? dataArray.map(entry => `
-          <tr>
-            <td>${entry.pc}</td>
-            <td>${entry.playerName}</td>
-            <td>${entry.sheckles.toLocaleString()}</td>
-            <td>${entry.backpackItems.join(", ")}</td>
-            <td>${entry.timestamp}</td>
-          </tr>
-        `).join('')
-      : "<tr><td colspan='5'>No data available.</td></tr>";
-  }
+	  const allowedItems = [
+		"dragonfly",
+		"raccoon",
+		"bug egg",
+		"night egg",
+		"candy blossom seed"
+	  ];
+
+	  dataTable.innerHTML = dataArray.length > 0
+		? dataArray.map(entry => {
+			const shownItems = entry.backpackItems.filter(item =>
+			  allowedItems.some(allowed => item.toLowerCase().includes(allowed.toLowerCase()))
+			);
+
+			return `
+			  <tr>
+				<td>${entry.pc}</td>
+				<td>${entry.playerName}</td>
+				<td>${entry.sheckles.toLocaleString()}</td>
+				<td>${shownItems.join(", ")}</td>
+				<td>${entry.timestamp}</td>
+			  </tr>
+			`;
+		  }).join('')
+		: "<tr><td colspan='5'>No data available.</td></tr>";
+	}
+
+
 
   fetchData();
 </script>
