@@ -27,6 +27,8 @@
   <button onclick="fetchData()">Load Data</button>
   <button onclick="deleteAllData()" class="delete-btn">Delete All Data</button>
   <input type="text" id="searchInput" placeholder="Search Backpack Items...">
+  <input type="number" id="minSheckles" placeholder="Min Sheckles">
+  <input type="number" id="maxSheckles" placeholder="Max Sheckles">
   <button onclick="copyVisibleData()">📋 Copy Filtered Data</button>
 </div>
 
@@ -76,65 +78,63 @@
   let sortDirection = 1;
   let currentSortKey = "pc";
 
-  async function fetchData() {
-    const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
-    const selectedPCs = getSelectedPCs();
+	async function fetchData() {
+	  const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+	  const selectedPCs = getSelectedPCs();
+	  const minSheckles = parseInt(document.getElementById('minSheckles').value) || 0;
+	  const maxShecklesInput = document.getElementById('maxSheckles').value;
+	  const maxSheckles = maxShecklesInput !== "" ? parseInt(maxShecklesInput) : Infinity;
 
-    try {
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      const pcCheckboxGroup = document.getElementById('pcCheckboxGroup');
-      const dataTable = document.getElementById('data-table');
-      const summaryTable = document.getElementById('summary-table');
+	  try {
+		const response = await fetch(apiUrl);
+		const data = await response.json();
+		const pcCheckboxGroup = document.getElementById('pcCheckboxGroup');
+		const dataTable = document.getElementById('data-table');
+		const summaryTable = document.getElementById('summary-table');
 
-      if (!data) {
-        dataTable.innerHTML = "<tr><td colspan='5'>No data available.</td></tr>";
-        summaryTable.innerHTML = "<tr><td colspan='3'>No data available.</td></tr>";
-        pcCheckboxGroup.innerHTML = "";
-        return;
-      }
+		if (!data) {
+		  dataTable.innerHTML = "<tr><td colspan='5'>No data available.</td></tr>";
+		  summaryTable.innerHTML = "<tr><td colspan='3'>No data available.</td></tr>";
+		  pcCheckboxGroup.innerHTML = "";
+		  return;
+		}
 
 		dataArray = Object.keys(data).map(key => {
 		  const entry = data[key];
 		  return {
 			playerName: key,
 			pc: entry.pc || "Unknown",
-			sheckles: entry.sheckles !== undefined ? entry.sheckles : 0,
+			sheckles: entry.sheckles || 0,
 			backpackItems: entry.backpackItems || [],
 			timestamp: entry.timestamp || "N/A",
 			placeVersion: entry.placeVersion || "-"
 		  };
 		});
 
+		// Filter by PC
+		if (selectedPCs.length > 0) {
+		  dataArray = dataArray.filter(entry => selectedPCs.includes(entry.pc));
+		}
 
-      // สร้าง Checkbox จากข้อมูล PC จริง
-      const uniquePCs = [...new Set(dataArray.map(entry => entry.pc))]
-        .sort((a, b) => parseInt(a.replace("PC_", "")) - parseInt(b.replace("PC_", "")));
+		// Filter by backpack item text search
+		if (searchQuery) {
+		  dataArray = dataArray.filter(entry =>
+			entry.backpackItems.some(item => item.toLowerCase().includes(searchQuery))
+		  );
+		}
 
-      pcCheckboxGroup.innerHTML = uniquePCs.map(pc => `
-        <label>
-          <input type="checkbox" value="${pc}" checked> ${pc}
-        </label>
-      `).join('');
+		// ✅ Filter by sheckles range
+		dataArray = dataArray.filter(entry =>
+		  entry.sheckles >= minSheckles && entry.sheckles <= maxSheckles
+		);
 
-      // กรองตาม PC
-      if (selectedPCs.length > 0) {
-        dataArray = dataArray.filter(entry => selectedPCs.includes(entry.pc));
-      }
+		renderTable();
+		renderSummary();
+	  } catch (error) {
+		console.error("Error fetching data:", error);
+	  }
+	}
 
-      // กรอง Backpack Items
-      if (searchQuery) {
-        dataArray = dataArray.filter(entry =>
-          entry.backpackItems.some(item => item.toLowerCase().includes(searchQuery))
-        );
-      }
-
-      renderTable();
-      renderSummary();
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  }
 
 	function renderSummary() {
 	  const summaryTable = document.getElementById('summary-table');
