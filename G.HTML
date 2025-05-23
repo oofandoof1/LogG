@@ -77,10 +77,9 @@
   let dataArray = [];
   let sortDirection = 1;
   let currentSortKey = "pc";
-
+  let rawDataArray = [];
 	async function fetchData() {
 	  const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
-	  const selectedPCs = getSelectedPCs();
 	  const minSheckles = parseInt(document.getElementById('minSheckles').value) || 0;
 	  const maxShecklesInput = document.getElementById('maxSheckles').value;
 	  const maxSheckles = maxShecklesInput !== "" ? parseInt(maxShecklesInput) : Infinity;
@@ -111,30 +110,130 @@
 		  };
 		});
 
-		// Filter by PC
+		// สร้าง list PC
+		const pcList = [...new Set(dataArray.map(entry => entry.pc))].sort();
+
+		// สร้าง checkbox group ใหม่
+		pcCheckboxGroup.innerHTML = '';
+		pcList.forEach(pc => {
+		  const id = `pc-checkbox-${pc.replace(/\s+/g, '-')}`;
+		  const checkbox = document.createElement('input');
+		  checkbox.type = 'checkbox';
+		  checkbox.id = id;
+		  checkbox.value = pc;
+		  checkbox.checked = true; // เลือกทั้งหมดเริ่มต้น
+
+		  // เวลา checkbox เปลี่ยน ให้โหลดข้อมูลใหม่
+		  checkbox.addEventListener('change', fetchData);
+
+		  const label = document.createElement('label');
+		  label.htmlFor = id;
+		  label.textContent = pc;
+
+		  pcCheckboxGroup.appendChild(checkbox);
+		  pcCheckboxGroup.appendChild(label);
+		  pcCheckboxGroup.appendChild(document.createTextNode(' '));
+		});
+
+		// ดึง selectedPCs หลังจากสร้าง checkbox แล้ว
+		const selectedPCs = getSelectedPCs();
+
+		// กรองข้อมูลตาม PC ที่เลือก
 		if (selectedPCs.length > 0) {
 		  dataArray = dataArray.filter(entry => selectedPCs.includes(entry.pc));
 		}
 
-		// Filter by backpack item text search
+		// กรองตาม backpack search
 		if (searchQuery) {
 		  dataArray = dataArray.filter(entry =>
 			entry.backpackItems.some(item => item.toLowerCase().includes(searchQuery))
 		  );
 		}
 
-		// ✅ Filter by sheckles range
+		// กรองตามช่วง sheckles
 		dataArray = dataArray.filter(entry =>
 		  entry.sheckles >= minSheckles && entry.sheckles <= maxSheckles
 		);
-
+		
+		  rawDataArray = Object.keys(data).map(key => {
+			const entry = data[key];
+			return {
+			  playerName: key,
+			  pc: entry.pc || "Unknown",
+			  sheckles: entry.sheckles || 0,
+			  backpackItems: entry.backpackItems || [],
+			  timestamp: entry.timestamp || "N/A",
+			  placeVersion: entry.placeVersion || "-"
+			};
+		  });
+		  
+		  renderPCCheckboxes();
+		  filterAndRender();
 		renderTable();
 		renderSummary();
+
 	  } catch (error) {
 		console.error("Error fetching data:", error);
 	  }
 	}
 
+	function renderPCCheckboxes() {
+	  const pcCheckboxGroup = document.getElementById('pcCheckboxGroup');
+	  const pcList = [...new Set(rawDataArray.map(e => e.pc))].sort();
+	  pcCheckboxGroup.innerHTML = '';
+
+	  pcList.forEach(pc => {
+		const id = `pc-checkbox-${pc.replace(/\s+/g, '-')}`;
+		const checkbox = document.createElement('input');
+		checkbox.type = 'checkbox';
+		checkbox.id = id;
+		checkbox.value = pc;
+		checkbox.checked = true;
+
+		// เปลี่ยนให้เรียกฟังก์ชันกรองข้อมูลเท่านั้น
+		checkbox.addEventListener('change', filterAndRender);
+
+		const label = document.createElement('label');
+		label.htmlFor = id;
+		label.textContent = pc;
+
+		pcCheckboxGroup.appendChild(checkbox);
+		pcCheckboxGroup.appendChild(label);
+		pcCheckboxGroup.appendChild(document.createTextNode(' '));
+	  });
+	}
+
+	function getSelectedPCs() {
+	  const checkboxes = document.querySelectorAll('#pcCheckboxGroup input[type="checkbox"]');
+	  return Array.from(checkboxes)
+		.filter(cb => cb.checked)
+		.map(cb => cb.value);
+	}
+
+	function filterAndRender() {
+	  const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+	  const minSheckles = parseInt(document.getElementById('minSheckles').value) || 0;
+	  const maxShecklesInput = document.getElementById('maxSheckles').value;
+	  const maxSheckles = maxShecklesInput !== "" ? parseInt(maxShecklesInput) : Infinity;
+
+	  let filtered = rawDataArray;
+
+	  const selectedPCs = getSelectedPCs();
+	  if (selectedPCs.length > 0) {
+		filtered = filtered.filter(e => selectedPCs.includes(e.pc));
+	  }
+
+	  if (searchQuery) {
+		filtered = filtered.filter(e => e.backpackItems.some(item => item.toLowerCase().includes(searchQuery)));
+	  }
+
+	  filtered = filtered.filter(e => e.sheckles >= minSheckles && e.sheckles <= maxSheckles);
+
+	  dataArray = filtered;  // อัพเดต dataArray ให้เป็น filtered
+
+	  renderTable();
+	  renderSummary();
+	}
 
 	function renderSummary() {
 	  const summaryTable = document.getElementById('summary-table');
@@ -209,7 +308,7 @@
 	  const dataTable = document.getElementById('data-table');
 
 	  const allowedItems = [
-		"Dragonfly", "Raccoon", "bug egg", "night egg", "candy blossom seed", "Red Fox"
+		"Dragonfly", "Raccoon", "bug egg", "night egg", "candy blossom seed", "Red Fox", "Mythical Egg"
 	  ];
 
 	  dataTable.innerHTML = dataArray.length > 0
@@ -259,7 +358,7 @@
 	  }
 
 	  const allowedItems = [
-		"dragonfly", "raccoon", "bug egg", "night egg", "candy blossom seed"
+		"dragonfly", "raccoon", "bug egg", "night egg", "candy blossom seed", "Red Fox", "Mythical Egg"
 	  ];
 
 	  const rows = dataArray.map(entry => {
